@@ -18,7 +18,7 @@ class DirectoryWorker:
 
     def update(self, filename_filter=None, data_filter=None):
         accepted_filename = ".DAT"
-        required_filenames = ["HEADER", "TYPES"]
+        required_filenames = ["HEADER", "TYPES", "FORMAT"]
 
         for i in os.listdir(self.directory):
             if os.path.isfile(i):
