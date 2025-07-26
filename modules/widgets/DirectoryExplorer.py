@@ -19,7 +19,7 @@ class DirectoryExplorer(QtWidgets.QTableWidget):
             for i in self.enters.editor_enters:
                 enters_content.append(str(i.getData()))
             self.directoryWorker.update(
-                filename_filter="TTTT", data_filter=enters_content
+                filename_filter=None, data_filter=enters_content
             )
         self.itemSelectionChanged.connect(self.enters.update)
         self.setColumnCount(len(self.directoryWorker.files["HEADER"]))

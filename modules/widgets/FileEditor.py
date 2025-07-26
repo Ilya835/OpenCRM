@@ -23,7 +23,7 @@ class FileEditor(QtWidgets.QGroupBox):
             self.editor_enters.clear()
             for i in range(len(self.directoryWorker.files["HEADER"])):
                 widget = inputs.content[self.directoryWorker.files["TYPES"][i]](
-                    self.directoryWorker.files["HEADER"][i]
+                    self.directoryWorker.files["HEADER"][i],self.directoryWorker.files["FORMAT"][i]
                 )  # Создаем объект виджета (его берем из библиотеки inputs)
                 widget.connectMethod(
                     self.selector.update

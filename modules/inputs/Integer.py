@@ -13,11 +13,14 @@ class Integer(QtWidgets.QGroupBox):
     clearData - очищает поле ввода
     """
 
-    def __init__(self, name):
+    def __init__(self, name, formatString=None):
         super(Integer, self).__init__()
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
         self.dataInput = QtWidgets.QSpinBox()
+        if formatString:
+            self.formatString = formatString
+            self.dataInput.setSuffix(self.formatString)
         self.layout.addWidget(self.dataInput, 0, 1)
 
     def connectMethod(self, method):
