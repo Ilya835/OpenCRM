@@ -19,7 +19,7 @@ for module_file in modules:
     try:
         module = importlib.import_module(f".{module_name}", package=__name__)
         globals()[module_name] = module
-        content[module.name] = getattr(module, module_name)
+        content[module.module_name] = getattr(module, module_name)
         logger.info(f"Импортировано поле ввода данных {module_name}")
     except Exception as err:
         logger.exception(f"Ошибка импорта поля ввода данных {module_name}: {err}")

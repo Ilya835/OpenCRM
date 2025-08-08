@@ -1,6 +1,6 @@
 from PyQt6 import QtWidgets
 
-name = "Целое число"
+module_name = "Целое число"
 
 
 class Integer(QtWidgets.QGroupBox):
@@ -13,10 +13,13 @@ class Integer(QtWidgets.QGroupBox):
     clearData - очищает поле ввода
     """
 
-    def __init__(self, name, formatString=None):
+    def __init__(self, name=None, formatString=None):
         super(Integer, self).__init__()
         self.layout = QtWidgets.QGridLayout(self)
-        self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        if name:
+            self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        else:
+            self.layout.addWidget(QtWidgets.QLabel(module_name), 0, 0)
         self.dataInput = QtWidgets.QSpinBox()
         if formatString:
             self.formatString = formatString

@@ -1,6 +1,6 @@
 from PyQt6 import QtWidgets
 
-name = "Строка"
+module_name = "Строка"
 
 
 class Stroke(QtWidgets.QGroupBox):
@@ -13,10 +13,13 @@ class Stroke(QtWidgets.QGroupBox):
     clearData - очищает поле ввода
     """
 
-    def __init__(self, name, formatString=None):
+    def __init__(self, name=None, formatString=None):
         super(Stroke, self).__init__()
         self.layout = QtWidgets.QGridLayout(self)
-        self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        if name:
+            self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        else:
+            self.layout.addWidget(QtWidgets.QLabel(module_name), 0, 0)
         self.dataInput = QtWidgets.QLineEdit()
         if formatString:
             self.formatString = formatString

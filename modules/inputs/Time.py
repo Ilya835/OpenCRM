@@ -1,7 +1,7 @@
 from PyQt6 import QtWidgets, QtCore
 import datetime
 
-name = "Время"
+module_name = "Время"
 
 
 class Time(QtWidgets.QGroupBox):
@@ -17,7 +17,7 @@ class Time(QtWidgets.QGroupBox):
     :param clearData: - очищает поле ввода
     """
 
-    def __init__(self, name, formatString=None):
+    def __init__(self, name=None, formatString=None):
         super(Time, self).__init__()
         # Если formatString не передан то выставляем дефолтное значение
         if formatString is None:
@@ -25,7 +25,10 @@ class Time(QtWidgets.QGroupBox):
         else:
             self.formatString = formatString
         self.layout = QtWidgets.QGridLayout(self)
-        self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        if name:
+            self.layout.addWidget(QtWidgets.QLabel(name), 0, 0)
+        else:
+            self.layout.addWidget(QtWidgets.QLabel(module_name), 0, 0)
         self.dataInput = QtWidgets.QDateTimeEdit()
         self.dataInput.setDisplayFormat(self.formatString)
         self.dataInput.setMinimumDateTime(QtCore.QDateTime(1993, 10, 4, 7, 0, 0))
