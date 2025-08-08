@@ -49,8 +49,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.explorer.update()
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
-    window = MainWindow()
-    window.show()
-    app.exec()
+app = QtWidgets.QApplication([])
+window = MainWindow()
+window.show()
+app.exec()

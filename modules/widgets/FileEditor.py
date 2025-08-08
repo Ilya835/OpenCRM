@@ -21,9 +21,11 @@ class FileEditor(QtWidgets.QGroupBox):
             self.editor_layout.isEmpty()
         ):  # Если в редакторе нет виджетов то добавляем их из файла TYPES
             self.editor_enters.clear()
+
             for i in range(len(self.directoryWorker.files["HEADER"])):
                 widget = inputs.content[self.directoryWorker.files["TYPES"][i]](
-                    self.directoryWorker.files["HEADER"][i],self.directoryWorker.files["FORMAT"][i]
+                    self.directoryWorker.files["HEADER"][i],
+                    self.directoryWorker.files["FORMAT"][i],
                 )  # Создаем объект виджета (его берем из библиотеки inputs)
                 widget.connectMethod(
                     self.selector.update
@@ -34,6 +36,7 @@ class FileEditor(QtWidgets.QGroupBox):
                 self.editor_layout.addWidget(widget, i, 1)  # Размещаем его в редакторе
         currentRowHeader = self.selector.verticalHeaderItem(self.selector.currentRow())
         if currentRowHeader is not None:
+            self.setTitle(currentRowHeader.text())
             self.setDataFromFile(currentRowHeader.text())
 
     def setDataFromFile(self, filename):

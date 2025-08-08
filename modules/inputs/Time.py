@@ -29,6 +29,7 @@ class Time(QtWidgets.QGroupBox):
         self.dataInput = QtWidgets.QDateTimeEdit()
         self.dataInput.setDisplayFormat(self.formatString)
         self.dataInput.setMinimumDateTime(QtCore.QDateTime(1993, 10, 4, 7, 0, 0))
+        self.dataInput.setDateTime(self.dataInput.minimumDateTime())
         if "d" in self.formatString:
             self.dataInput.setCalendarPopup(True)
         self.layout.addWidget(self.dataInput, 0, 1)
@@ -37,54 +38,33 @@ class Time(QtWidgets.QGroupBox):
         )
         self.dataInput.customContextMenuRequested.connect(self.addContextMenu)
 
-    def convert_format(self, pyqt_format):
-        """
-        Конвертер форматов даты и времени.
-        :param pyqt_format: формат который будет конвертироваться
-        Внутри:
-        :param format_mapping: возможные конвертации
-        """
-        format_mapping = {
-            "HH": "%H",
-            "H": "%H",
-            "hh": "%I",
-            "h": "%I",
-            "mm": "%M",
-            "ss": "%S",
-            "AP": "%p",
-            "ap": "%p",
-            "yyyy": "%Y",
-            "yy": "%y",
-            "MM": "%m",
-            "dddd": "%A",
-            "ddd": "%a",
-            "dd": "%d",
-            ":": ":",
-            ".": ".",
-            "-": "-",
-            "/": "/",
-            " ": " ",
-        }
-        py_format = pyqt_format
-        for qt, py in format_mapping.items():
-            py_format = py_format.replace(qt, py)
-
-        return py_format
-
-    def setNowtime(self):
+    def setNowDateTime(self):
         """Выставляет текущее локальное время в dataInput"""
-        self.setData(
-            datetime.datetime.now().strftime(self.convert_format(self.formatString))
-        )
+        self.dataInput.setDateTime(datetime.datetime.now())
+
+    def showDialog(self):
+        dialog = TimeDialog(self)
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            dialog_ouput = dialog.getTime()
+            new_time = QtCore.QDateTime(self.dataInput.dateTime())
+            new_time.addDays(dialog_ouput[0])
+            new_time.setTime(
+                QtCore.QTime(
+                    new_time.time().hour() + dialog_ouput[1],
+                    new_time.time().second() + dialog_ouput[2],
+                )
+            )
+            self.dataInput.setDateTime(new_time)
 
     def addContextMenu(self, pos):
         """
-        Метод добавляющий контекстное меню.
+        Добавляет контекстное меню полю ввода.
         :param contextMenuActions: list Массив состоящий из кортежей для действий в контекстном меню.
         """
         contextMenuActions = [
-            ("Выставить текущее время", self.setNowtime),
+            ("Выставить текущее время", self.setNowDateTime),
             ("Очистить поле", self.clearData),
+            ("Прибавить время", self.showDialog),
         ]
         menu = QtWidgets.QMenu(self)
         for text, handler in contextMenuActions:
@@ -99,7 +79,7 @@ class Time(QtWidgets.QGroupBox):
     def getData(self):
         """Получает данные из поля ввода (dataInput)
         :return: строка (str) с данными"""
-        return self.dataInput.time().toString("hh:mm")
+        return self.dataInput.dateTime.toString("hh:mm")
 
     def setData(self, data):
         """Устанавливает данные в поле ввода.
@@ -112,3 +92,35 @@ class Time(QtWidgets.QGroupBox):
     def clearData(self):
         """Выставляет дефолтное время"""
         self.dataInput.setDateTime(self.dataInput.minimumDateTime())
+
+
+class TimeDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(TimeDialog, self).__init__()
+        self.setWindowTitle("Прибавить время.")
+        layout = QtWidgets.QGridLayout()
+        self.days = QtWidgets.QSpinBox()
+        self.days.setMinimum(0)
+        self.hours = QtWidgets.QSpinBox()
+        self.hours.setMaximum(23)
+        self.hours.setMinimum(0)
+        self.minutes = QtWidgets.QSpinBox()
+        self.minutes.setMaximum(59)
+        self.minutes.setMinimum(0)
+        layout.addWidget(QtWidgets.QLabel("Дней:"), 1, 0)
+        layout.addWidget(self.days, 1, 1)
+        layout.addWidget(QtWidgets.QLabel("Часов:"), 2, 0)
+        layout.addWidget(self.hours, 2, 1)
+        layout.addWidget(QtWidgets.QLabel("Минут:"), 3, 0)
+        layout.addWidget(self.minutes, 3, 1)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.setLayout(layout)
+
+    def getTime(self):
+        return [self.days.value(), self.hours.value(), self.minutes.value()]
