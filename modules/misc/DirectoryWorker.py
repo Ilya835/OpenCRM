@@ -10,40 +10,82 @@ class DirectoryWorker:
         """
         Класс для менеджмента папки.
         :param directory: Рабочая папка (передается при инициализации класса)
-        :
+        :param filenames: Имена файлов которые будут использоваться в обработке.
+        :param files: Словарь массивов где ключ это имя файла, а значение это его содержимое.
         """
+        self.filenames = {
+            "Data": ".DAT",
+            "Required": ["TYPES"],
+            "Optional": ["HEADER", "FORMAT"],
+        }
         self.directory = directory
         self.files = {}
+        self.check_path(directory)
         self.update()
 
     def update(self, filename_filter=None, data_filter=None):
-        accepted_filename = ".DAT"
-        required_filenames = ["HEADER", "TYPES", "FORMAT"]
-
+        # Чтение разрешенных файлов
         for i in os.listdir(self.directory):
-            if os.path.isfile(i):
-                if i.find(accepted_filename) != -1:
-                    with open(i, "r") as file:
-                        reader = csv.reader(file, delimiter=";")
-                        for row in reader:
-                            self.files[i] = row
-                else:
-                    continue
+            if i.find(self.filenames["Data"]) != -1:
+                self.files[i] = read_from_csv_stroke(self.directory + i)
+        # Сортировка и фильтрация данных в словаре
         self.files = filter_and_sort_dict(self.files, filename_filter, data_filter)
-
+        # Чтение обязательных функциональных файлов
         for i in os.listdir(self.directory):
-            if os.path.isfile(i):
-                for filename in required_filenames:
-                    if i.find(filename) != -1:
-                        with open(i, "r") as file:
-                            reader = csv.reader(file, delimiter=";")
-                            for row in reader:
-                                self.files[i] = row
+            for filename in self.filenames["Required"]:
+                if i.find(filename) != -1:
+                    self.files[i] = read_from_csv_stroke(self.directory + i)
+        # Чтение опциональных функциональных файлов
+        for filename in self.filenames["Optional"]:
+            for i in os.listdir(self.directory):
+                if i.find(filename) != -1:
+                    self.files[i] = read_from_csv_stroke(self.directory + i)
 
-    def save_file(self, filename, array):
+    def check_path(self, path):
+        print(f"Проверяется следующий путь: {path}")
+        count_of_data_files = 0
+        count_of_required = {}
+        count_of_optional = {}
+        for i in os.listdir(self.directory):
+            if i.find(self.filenames["Data"]) != -1:
+                count_of_data_files += 1
+            for filename in self.filenames["Required"]:
+                if i.find(filename) != -1:
+                    if filename not in count_of_required:
+                        count_of_required[filename] = 1
+                    else:
+                        count_of_required[filename] += 1
+            for filename in self.filenames["Optional"]:
+                if i.find(filename) != -1:
+                    if filename not in count_of_optional:
+                        count_of_optional[filename] = 1
+                    else:
+                        count_of_optional[filename] += 1
+        print(f"Количество файлов данных: {count_of_data_files} шт.")
+        print(f"Обязательные функциональные файлы: {count_of_required}")
+        for filename in self.filenames["Required"]:
+            if filename not in count_of_required:
+                print(
+                    f"Не найден обязательный функциональный файл {filename}.\nСоздаю файл-заглушку {filename} в переданом пути: {path}."
+                )
+                save_file(path + "TYPES", ["Строка"])
+        print(f"Опциональные функционнальные файлы: {count_of_optional}")
+
+
+def save_file(filename, array):
+    try:
         with open(filename, "w") as file:
-            writer = csv.writer(file, delimiter=";")
-            writer.writerow(array)
+            csv.writer(file, delimiter=";").writerow(array)
+    except IOError as error:
+        print(f"Что-то пошло не так при чтении файла. Вот ошибка: {error}")
+
+
+def read_from_csv_stroke(path):
+    try:
+        with open(path, "r") as file:
+            return list(csv.reader(file, delimiter=";"))[0]
+    except IOError as error:
+        print(f"Что-то пошло не так при чтении файла. Вот ошибка: {error}")
 
 
 def filter_and_sort_dict(

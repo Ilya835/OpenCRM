@@ -22,8 +22,9 @@ class DirectoryExplorer(QtWidgets.QTableWidget):
                 filename_filter=None, data_filter=enters_content
             )
         self.itemSelectionChanged.connect(self.enters.update)
-        self.setColumnCount(len(self.directoryWorker.files["HEADER"]))
-        self.setHorizontalHeaderLabels(self.directoryWorker.files["HEADER"])
+        self.setColumnCount(len(self.directoryWorker.files["TYPES"]))
+        if "HEADER" in self.directoryWorker.files:
+            self.setHorizontalHeaderLabels(self.directoryWorker.files["HEADER"])
         self.setRowCount(
             len(
                 list(filter(lambda x: x.find(".DAT") != -1, self.directoryWorker.files))
@@ -35,7 +36,7 @@ class DirectoryExplorer(QtWidgets.QTableWidget):
                 list(filter(lambda x: x.find(".DAT") != -1, self.directoryWorker.files))
             )
         ):
-            for j in range(len(list(self.directoryWorker.files["HEADER"]))):
+            for j in range(len(list(self.directoryWorker.files["TYPES"]))):
                 self.setItem(
                     i,
                     j,

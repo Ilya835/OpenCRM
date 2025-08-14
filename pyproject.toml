@@ -4,4 +4,7 @@ version = "0.1.0"
 description = "Opensource CRM system with modular design."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pyqt6>=6.9.1",
+    "typing>=3.10.0.0",
+]

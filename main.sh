@@ -20,7 +20,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.directoryWorker = misc.content[
             "Менеджер папки"
         ](
-            "/home/ilya/Projects/OpenCRM/"
+            "/home/ilya/Projects/OpenCRM/test/dir2/"
         )  # Экземпляр класса DirectoryWorker для работы с фалами в папке (чтение, запись и т.д).
         self.enters = widgets.content["Редактор файла"](
             self.directoryWorker
