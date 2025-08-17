@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import logging
 from PyQt6 import QtWidgets
-from modules import misc, widgets
-import ui_files
+from modules import misc, areas, ui_files
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -20,12 +19,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.directoryWorker = misc.content[
             "Менеджер папки"
         ](
-            "/home/ilya/Projects/OpenCRM/test/dir2/"
+            "/home/ilya/Projects/OpenCRM/test/dir1/"
         )  # Экземпляр класса DirectoryWorker для работы с фалами в папке (чтение, запись и т.д).
-        self.enters = widgets.content["Редактор файла"](
+        self.enters = areas.content["Редактор файла"](
             self.directoryWorker
         )  # Экземпляр класса FileEnters содержащий в себе поля ввода.
-        self.explorer = widgets.content[
+        self.explorer = areas.content[
             "Обзор папки"
         ](
             self.directoryWorker
@@ -39,9 +38,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.explorer.filtering = self.ui.is_filter.isChecked()
             self.explorer.update()
 
-        self.ui.is_filter.triggered.connect(filteringSwitch)
-        self.enters.update()
         self.explorer.update()
+        self.enters.update()
+        self.ui.is_filter.triggered.connect(filteringSwitch)
 
 
 app = QtWidgets.QApplication([])
