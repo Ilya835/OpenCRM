@@ -33,14 +33,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.explorer.enters = self.enters
         self.ui.splitter.addWidget(self.enters)
         self.ui.splitter_2.addWidget(self.explorer)
-
-        def filteringSwitch():
-            self.explorer.filtering = self.ui.is_filter.isChecked()
-            self.explorer.update()
-
         self.explorer.update()
         self.enters.update()
-        self.ui.is_filter.triggered.connect(filteringSwitch)
 
 
 app = QtWidgets.QApplication([])
