@@ -1,29 +1,40 @@
 import glob
 import csv
-import os
 import importlib.util
 import multiprocessing
+from . import PickablePixmap
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Any
-from datetime import datetime
+from PyQt6 import QtCore
 
-name = "Менеджер папки"
-from PyQt6 import QtCore, QtGui, QtWidgets
+module_name = "Менеджер папки"
+
+FORMATTED_TYPES = {
+    "Строка": str,
+    "Целое число": int,
+    "Дробное число": float,
+    "Время": QtCore.QDateTime().fromString,
+}
+UNFORMATTED_TYPES = {
+    "Флажок": bool,
+    "Фото": PickablePixmap.PickablePixmap,
+}
+TYPE_MAPPING = {**FORMATTED_TYPES, **UNFORMATTED_TYPES}
 
 
 class DirectoryManager:
-    """Высокопроизводительный менеджер директории с исправленной обработкой конфигов"""
+    """Высокопроизводительный менеджер директории"""
 
-    def __init__(self, directory: str, max_workers: int = None):
+    def __init__(self, directory: str, max_workers: int = multiprocessing.cpu_count()):
         self.directory = Path(directory)
-        self.max_workers = max_workers or multiprocessing.cpu_count()
+        self.max_workers = max_workers
 
         # Основной словарь всех файлов
-        self.config_files = {}
-
+        self.config_files: dict[str, list[Any]] = {}
+        self.types: list[Any] = []
         # Отдельный словарь только для .DAT файлов с преобразованными данными
-        self.data_files = {}
+        self.data_files: dict[str, list[Any]] = {}
         self.custom_code = None
 
         self.update_files()
@@ -40,9 +51,9 @@ class DirectoryManager:
         all_files = []
         for pattern in ["TYPES", "HEADER", "FORMAT"]:
             all_files.extend(glob.glob(str(self.directory / pattern)))
-
         # Параллельная загрузка всех файлов
         self.config_files = file_loader.load_files_parallel(all_files)
+        self.prepare_types()
         for pattern in ["HEADER", "FORMAT"]:
             if pattern not in self.config_files:
                 self.config_files[pattern] = list(
@@ -52,13 +63,11 @@ class DirectoryManager:
         self.data_files = file_loader.load_files_parallel(
             glob.glob(str(self.directory / "*.DAT"))
         )
-        print(self.config_files)
         # Загрузка пользовательского кода
         self._load_custom_code()
 
         # Преобразование .DAT файлов и заполнение data_files
         self._process_dat_files_parallel()
-        print(self.data_files)
 
     def _load_custom_code(self) -> None:
         """Загрузка пользовательского кода"""
@@ -75,10 +84,7 @@ class DirectoryManager:
     def _process_dat_files_parallel(self) -> None:
         """Параллельная обработка .DAT файлов и заполнение data_files"""
         # Получаем сырые .DAT данные из основного словаря
-        raw_dat_files = {}
-        for filename, data in self.data_files.items():
-            if filename.endswith(".DAT"):
-                raw_dat_files[filename] = data
+        raw_dat_files = {**self.data_files}
 
         if not raw_dat_files:
             print("Не найдено .DAT файлов для обработки")
@@ -93,7 +99,7 @@ class DirectoryManager:
                 future = executor.submit(
                     self._convert_dat_file_data,
                     raw_data,
-                    self.config_files["TYPES"],
+                    self.types,
                     self.config_files["FORMAT"],
                 )
                 futures[future] = filename
@@ -111,13 +117,13 @@ class DirectoryManager:
                     self.data_files[filename] = raw_dat_files[filename]
 
     def _convert_dat_file_data(
-        self, data: List[str], types_config: Dict[int, str], fmt_config: Dict[int, str]
+        self, data: List[str], types_config: List[Any], fmt_config: List[str]
     ) -> List[Any]:
         """Преобразование данных .DAT файла"""
         converted = []
         for i in range(len(data)):
             converted.append(
-                UltraFastTypeParser.parse_value(
+                self.parse_value(
                     data[i],
                     types_config[i],
                     fmt_config[i],
@@ -125,37 +131,24 @@ class DirectoryManager:
             )
         return converted
 
+    def prepare_types(self) -> None:
+        for i in self.config_files["TYPES"]:
+            self.types.append(TYPE_MAPPING[i])
 
-# Вспомогательные классы (остаются без изменений)
-class UltraFastTypeParser:
-    _cache = {}
-    _cache_size = 100000
-
-    @classmethod
-    def parse_value(cls, value: str, target_type: str, fmt: str = " ") -> Any:
-        TYPE_MAPPING = {
-            "Строка": str,
-            "Целое число": int,
-            "Дробное число": float,
-            "Время": QtCore.QDateTime().fromString,
-            "Флажок": bool,
-            "Фото": Pickable_QPixmap,
-        }
+    def parse_value(self, value: str, target_type: Any, fmt: str = " ") -> Any:
+        self._cache: dict[str, Any] = {}
+        self._cache_size = 100000
         if not value.strip():
             return None
 
         cache_key = f"{value}|{target_type}"
-        if cache_key in cls._cache:
-            return cls._cache[cache_key]
+        if cache_key in self._cache:
+            return self._cache[cache_key]
         try:
-            if target_type in ["Фото", "Флажок"]:
-                result = TYPE_MAPPING[target_type](value)
-
-            else:
-                result = TYPE_MAPPING[target_type](value, fmt)
-            if len(cls._cache) >= cls._cache_size:
-                cls._cache.clear()
-            cls._cache[cache_key] = result
+            result = target_type(value)
+            if len(self._cache) >= self._cache_size:
+                self._cache.clear()
+            self._cache[cache_key] = result
 
             return result
 
@@ -164,24 +157,9 @@ class UltraFastTypeParser:
             return value
 
 
-class Pickable_QPixmap(QtGui.QPixmap):
-    def __reduce__(self) -> Any:
-        return type(self), (), self.__getstate__()
-
-    def __getstate__(self) -> QtCore.QByteArray:
-        ba = QtCore.QByteArray()
-        stream = QtCore.QDataStream(ba, QtCore.QIODevice.OpenModeFlag.WriteOnly)
-        stream << self
-        return ba
-
-    def __setstate__(self, ba: QtCore.QByteArray) -> None:
-        stream = QtCore.QDataStream(ba, QtCore.QIODevice.OpenModeFlag.ReadOnly)
-        stream >> self
-
-
 class ParallelFileLoader:
-    def __init__(self, max_workers: int = None):
-        self.max_workers = max_workers or multiprocessing.cpu_count()
+    def __init__(self, max_workers: int = multiprocessing.cpu_count()):
+        self.max_workers = max_workers
 
     def load_file(self, file_path: str) -> tuple[str, Any]:
         try:

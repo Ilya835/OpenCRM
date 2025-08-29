@@ -10,7 +10,7 @@ formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 modules = glob.glob(os.path.join(os.path.dirname(__file__), "*.py"))
-content = {}
+Misc = {}
 
 for module_file in modules:
     module_name = os.path.basename(module_file)[:-3]
@@ -19,7 +19,7 @@ for module_file in modules:
     try:
         module = importlib.import_module(f".{module_name}", package=__name__)
         globals()[module_name] = module
-        content[module.name] = getattr(module, module_name)
+        Misc[module.module_name] = getattr(module, module_name)
         logger.info(f"Импортирован дополнительный класс {module_name}")
     except Exception as error:
         logger.error(f"Ошибка импорта дополнительного класса {module_name}: {error}")

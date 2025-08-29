@@ -1,129 +1,123 @@
+from ..misc import MenuBarUtils
+from ..icons import Icons
 from PyQt6 import QtGui, QtCore, QtWidgets
+from typing import Any
+
+module_name = "Обзор папки"
 
 
-name = "Обзор папки"
+class DirectoryExplorer(QtWidgets.QGroupBox):
+    def __init__(self, directoryWorker: Any):
+        def nullDef() -> None:
+            pass
+
+        super().__init__()
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(DirectoryTable(directoryWorker))
+        menubar_content: Dict[str, Dict[str, Dict[str, Any]]] = {
+            "Файл": {
+                "Открыть": {
+                    "onTriggered": nullDef,
+                    "checkable": False,
+                    "icon": Icons["open-file.svg"],
+                    "objName": "open",
+                },
+                "separator": None,
+                "Сохранить": {
+                    "onTriggered": nullDef,
+                    "checkable": False,
+                    "icon": Icons["save-file.svg"],
+                    "objName": "save",
+                },
+                "Удалить": {
+                    "onTriggered": nullDef,
+                    "checkable": False,
+                    "icon": Icons["trashbox.svg"],
+                    "objName": "detele",
+                },
+            },
+            "Изменить": {
+                "Отфильтровать данные": {
+                    "onTriggered": nullDef,
+                    "checkable": True,
+                    "icon": Icons["filter-files.svg"],
+                    "objName": "filter",
+                }
+            },
+        }
+        self.menubar = QtWidgets.QMenuBar(self)
+        MenuBarUtils.setupMenuBar(self.menubar, menubar_content, self)
+        self.setLayout(layout)
 
 
-class DirectoryExplorer(QtWidgets.QTableView):
-    def __init__(self, directoryWorker):
+class DirectoryTable(QtWidgets.QTableView):
+    def __init__(self, directoryWorker: Any):
         super().__init__()
         self.directoryWorker = directoryWorker
         self.setup_ui()
         self.set_data()
+        self.setIconSize(QtCore.QSize(128, 128))
 
-    def setup_ui(self):
-        """ÐÐ°ÑÑÑÐ¾Ð¹ÐºÐ° Ð²Ð½ÐµÑÐ½ÐµÐ³Ð¾ Ð²Ð¸Ð´Ð° ÑÐ°Ð±Ð»Ð¸ÑÑ"""
+    def setup_ui(self) -> None:
         self.horizontalHeader().setSectionResizeMode(
-            QtWidgets.QHeaderView.ResizeMode.Stretch
+            QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
         self.verticalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
 
-    def set_data(self):
-        model = DictArrayTableModel(
-            self.directoryWorker.data_files, self.directoryWorker.config_files["HEADER"]
-        )
+    def set_data(self) -> None:
+        model = DictArrayTableModel(self.directoryWorker)
         self.setModel(model)
 
 
 class DictArrayTableModel(QtCore.QAbstractTableModel):
-    def __init__(self, data_dict, horizontal_headers):
+    def __init__(self, directoryWorker: Any):
         super().__init__()
-        self.data_dict = data_dict
-        self.horizontal_headers = horizontal_headers
-        self.vertical_headers = list(data_dict.keys())
-        self.column_types = self._detect_column_types()
+        self.directoryWorker = directoryWorker
 
-        self._validate_data()
+    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        return len(self.directoryWorker.data_files)
 
-    def _detect_column_types(self):
-        if not self.data_dict:
-            return {}
-
-        column_types = {}
-        first_key = next(iter(self.data_dict))
-
-        for col in range(len(self.data_dict[first_key])):
-            sample_value = self.data_dict[first_key][col]
-
-            if isinstance(sample_value, (QtGui.QPixmap, QtGui.QIcon)):
-                column_types[col] = "image"
-            elif isinstance(
-                sample_value, (QtCore.QDateTime, QtCore.QDate, QtCore.QTime)
-            ):
-                column_types[col] = "datetime"
-            elif isinstance(sample_value, (int, float)):
-                column_types[col] = "number"
-            elif isinstance(sample_value, bool):
-                column_types[col] = "bool"
-            else:
-                column_types[col] = "text"
-
-        return column_types
-
-    def _validate_data(self):
-        if not self.data_dict:
-            return
-
-        first_key = next(iter(self.data_dict))
-        expected_length = len(self.data_dict[first_key])
-
-        for key, values in self.data_dict.items():
-            if len(values) != expected_length:
-                raise ValueError(
-                    f"Все массивы должны иметь одинаковую длинну."
-                    f"Ключ '{key} имеет длинну {len(values)}, "
-                    f"ожидается {expected_length}"
-                )
-
-        if len(self.horizontal_headers) != expected_length:
-            raise ValueError(
-                f"Количество горизонтальных заголовков ({len(self.horizontal_headers)}) "
-                f"должно соответствовать длинне массивов ({expected_length})"
-            )
-
-    def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self.data_dict)
-
-    def columnCount(self, parent=QtCore.QModelIndex()):
-        if not self.data_dict:
+    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        if not self.directoryWorker.data_files:
             return 0
-        return len(next(iter(self.data_dict.values())))
+        return len(next(iter(self.directoryWorker.data_files.values())))
 
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+    def data(
+        self, index: QtCore.QModelIndex, role: Any = QtCore.Qt.ItemDataRole.DisplayRole
+    ) -> Any:
         if not index.isValid():
             return None
-
-        row = index.row()
         col = index.column()
-        key = self.vertical_headers[row]
-        value = self.data_dict[key][col]
-
+        value = self.directoryWorker.data_files[
+            list(self.directoryWorker.data_files.keys())[index.row()]
+        ][col]
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if isinstance(value, (QtGui.QPixmap, QtGui.QIcon)):
+            if self.directoryWorker.config_files["TYPES"][col] == "Фото":
                 return None
-            elif isinstance(value, (QtCore.QDateTime, QtCore.QDate, QtCore.QTime)):
-                return self._format_datetime(value)
-            elif isinstance(value, bool):
-                return "ÐÐ°" if value else "ÐÐµÑ"
+            elif self.directoryWorker.config_files["TYPES"][col] == "Время":
+                return value.toString(self.directoryWorker.config_files["FORMAT"][col])
+            elif self.directoryWorker.config_files["TYPES"][col] == "Флажок":
+                return "Да" if value else "Нет"
             else:
                 return str(value)
 
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
-            if isinstance(value, (QtGui.QPixmap, QtGui.QIcon)):
-                if isinstance(value, QtGui.QPixmap):
-                    return QtGui.QIcon(value)
-                return value
+            if self.directoryWorker.config_files["TYPES"][col] == "Фото":
+                return QtGui.QIcon(value)
             return None
 
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
-            if self.column_types.get(col) == "number":
+            if self.directoryWorker.config_files["TYPES"][col] in [
+                "Целое число",
+                "Дробное число",
+            ]:
                 return (
-                    QtCore.Qt.AlignmentFlag.AlignRight
+                    QtCore.Qt.AlignmentFlag.AlignHCenter
                     | QtCore.Qt.AlignmentFlag.AlignVCenter
                 )
-            elif self.column_types.get(col) == "datetime":
+            elif self.directoryWorker.config_files["TYPES"][col] == "Время":
                 return (
                     QtCore.Qt.AlignmentFlag.AlignCenter
                     | QtCore.Qt.AlignmentFlag.AlignVCenter
@@ -137,19 +131,22 @@ class DictArrayTableModel(QtCore.QAbstractTableModel):
 
         return None
 
-    def _format_datetime(self, dt, fmt):
-        dt.toString(fmt)
-        return str(dt)
-
-    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+    def headerData(
+        self,
+        section: int,
+        orientation: QtCore.Qt.Orientation,
+        role: Any = QtCore.Qt.ItemDataRole.DisplayRole,
+    ) -> Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if orientation == QtCore.Qt.Orientation.Horizontal:
-                if section < len(self.horizontal_headers):
-                    return self.horizontal_headers[section]
+                if section < len(self.directoryWorker.config_files["HEADER"]):
+                    return self.directoryWorker.config_files["HEADER"][section]
             elif orientation == QtCore.Qt.Orientation.Vertical:
-                if section < len(self.vertical_headers):
-                    return self.vertical_headers[section]
+                if section < len(self.directoryWorker.data_files.keys()):
+                    return list(self.directoryWorker.data_files.keys())[section]
         return None
 
-    def flags(self, index):
+    def flags(
+        self, index: QtCore.QModelIndex
+    ) -> QtCore.Qt.ItemFlag | QtCore.Qt.ItemFlag:
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
