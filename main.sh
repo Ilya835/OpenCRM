@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import logging
 from PyQt6 import QtWidgets
-from modules.areas import Areas
-from modules.misc import Misc
+from modules.misc.DirectoryManager import DirectoryManager
 from modules import ui_files
+from modules.areas.DirectoryExplorer import DirectoryExplorer
+from modules.areas.FileEditor import FileEditor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -18,18 +19,14 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__()
         self.ui = ui_files.TestWindow.Ui_Window()
         self.ui.setupUi(self)
-        self.directoryWorker = Misc[
-            "Менеджер папки"
-        ](
+        self.DirManager = DirectoryManager(
             "/home/ilya/Projects/OpenCRM/test/dir1/"
-        )  # Экземпляр класса DirectoryWorker для работы с фалами в папке (чтение, запись и т.д).
-        self.enters = Areas["Редактор файла"](
-            self.directoryWorker
-        )  # Экземпляр класса FileEnters содержащий в себе поля ввода.
-        self.explorer = Areas[
-            "Обзор папки"
-        ](
-            self.directoryWorker
+        )  # Экземпляр класса DirectoryManager для работы с фалами в папке (чтение, запись и т.д).
+        self.enters = FileEditor(
+            self.DirManager
+        )  # Экземпляр класса FileEditor содержащий в себе поля ввода.
+        self.explorer = DirectoryExplorer(
+            self.DirManager
         )  # Экземпляр класса DirectoryExplorer - таблицы с файлами и их контентом являющейся селектором файлов.
         self.enters.selector = self.explorer
         self.explorer.enters = self.enters

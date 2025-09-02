@@ -1,57 +1,54 @@
-from ..units import Units
+# from ..units import Units
 from ..icons import Icons
-from ..misc import MenuBarUtils
+from ..misc import MenuUtils, DirectoryManager
+from . import DirectoryExplorer
+from .. import Units
 from PyQt6 import QtWidgets, QtGui
-from typing import Any, Dict
+from typing import Any, Dict, Union, List
 
 module_name = "Редактор файла"
 
 
 class FileEditor(QtWidgets.QGroupBox):
-    def __init__(self, directoryWorker):
+    def __init__(
+        self,
+        DirManager: DirectoryManager,
+    ):
         super(FileEditor, self).__init__()
-        self.directoryWorker = directoryWorker  # Объект менеджера папок
-        menubar_content: Dict[str, Dict[str, Dict[str, Any]]] = {
-            "Файл": {
-                "Открыть": {
-                    "onTriggered": self.openFile,
-                    "checkable": False,
-                    "icon": Icons["open-file.svg"],
-                    "objName": "open",
-                },
-                "separator": None,
-                "Сохранить": {
-                    "onTriggered": self.showSaveFileDialog,
-                    "checkable": False,
-                    "icon": Icons["save-file.svg"],
-                    "objName": "save",
-                },
-                "Удалить": {
-                    "onTriggered": self.deleteFile,
-                    "checkable": False,
-                    "icon": Icons["trashbox.svg"],
-                    "objName": "detele",
-                },
-            },
-            "Изменить": {
-                "Отфильтровать данные": {
-                    "onTriggered": self.checkFilter,
-                    "checkable": True,
-                    "icon": Icons["filter-files.svg"],
-                    "objName": "filter",
-                }
-            },
+        self.DirManager = DirManager  # Объект менеджера папки
+        menubar_content: Dict[str, List[Union[MenuUtils.MenuItem, None]]] = {
+            "Файл": [
+                MenuUtils.MenuItem(
+                    "Открыть", self.openFile, False, Icons["open-file.svg"], "open"
+                ),
+                None,
+                MenuUtils.MenuItem(
+                    "Сохранить",
+                    self.showSaveFileDialog,
+                    False,
+                    Icons["save-file.svg"],
+                    "save",
+                ),
+                MenuUtils.MenuItem(
+                    "Удалить", self.deleteFile, False, Icons["trashbox.svg"], "remove"
+                ),
+            ],
+            "Изменить": [
+                MenuUtils.MenuItem(
+                    "Отфильтровать данные",
+                    self.checkFilter,
+                    True,
+                    Icons["filter-files.svg"],
+                    "filter",
+                ),
+            ],
         }
 
-        self.selector = (
-            None  # Объект селектора (таблицы из которой буду браться данные)
-        )
-        self.editor_enters = []  # Массив полей ввода данных
+        self.selector: Union[DirectoryExplorer.DirectoryExplorer, None]
+        self.editor_enters: list[Any] = []  # Массив полей ввода данных
         self.menubar = QtWidgets.QMenuBar()
-        self.editor_layout = QtWidgets.QGridLayout(
-            self
-        )  # Компоновщик в который поля добавляются
-        MenuBarUtils.setupMenuBar(self.menubar, menubar_content, self)
+        self.setLayout(QtWidgets.QGridLayout(self))
+        MenuUtils.setupMenuBar(self.menubar, menubar_content, self)
 
     def openFile(self) -> None:
         print("openFile")
@@ -72,32 +69,31 @@ class FileEditor(QtWidgets.QGroupBox):
             editor_content = []
             for i in self.editor_enters:
                 editor_content.append(i.getData())
-            self.directoryWorker.save_stroke_to_csv(
-                dialog.getFullPath(), editor_content
-            )
+            self.DirManager.save_stroke_to_csv(dialog.getFullPath(), editor_content)
 
     def checkFilter(self) -> None:
         if self.getMenuBarCheckedState("filter"):
             editor_content = []
             for i in self.editor_enters:
                 editor_content.append(i.getData())
-            self.directoryWorker.update(editor_content, 0.5)
+            self.DirManager.update(editor_content, 0.5)
             self.selector.update()
 
     def update(self) -> None:
         if (
-            self.editor_layout.isEmpty()
+            self.layout().isEmpty()
         ):  # Если в редакторе нет виджетов то добавляем их из файла TYPES
             self.editor_enters.clear()
-            for i in range(len(self.directoryWorker.config_files["TYPES"])):
-                widget = Units[
-                    self.directoryWorker.config_files["TYPES"][i]
-                ]()  # Создаем объект виджета (его берем из библиотеки inputs)
+            for i in range(len(self.DirManager.config_files["TYPES"])):
+                widget = Units.CustomGroupBox(
+                    self.DirManager.config_files["TYPES"][i]
+                )  # Создаем объект виджета (его берем из библиотеки inputs)
                 widget.connectMethod(self.checkFilter)
+                widget.setTitle(self.DirManager.config_files["HEADER"][i])
                 self.editor_enters.append(
                     widget
                 )  # Добавляем его в массив полей ввода (для дальнейшей обработки)
-                self.editor_layout.addWidget(widget, i, 1)  # Размещаем его в редакторе
+                self.layout().addWidget(widget, i, 1)  # Размещаем его в редакторе
 
 
 class SaveFileDialog(QtWidgets.QDialog):

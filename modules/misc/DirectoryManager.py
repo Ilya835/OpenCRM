@@ -3,24 +3,13 @@ import csv
 import importlib.util
 import multiprocessing
 from . import PickablePixmap
+from ..Units import TYPES_MAPPING, UNITS_MAP
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Any
 from PyQt6 import QtCore
 
 module_name = "Менеджер папки"
-
-FORMATTED_TYPES = {
-    "Строка": str,
-    "Целое число": int,
-    "Дробное число": float,
-    "Время": QtCore.QDateTime().fromString,
-}
-UNFORMATTED_TYPES = {
-    "Флажок": bool,
-    "Фото": PickablePixmap.PickablePixmap,
-}
-TYPE_MAPPING = {**FORMATTED_TYPES, **UNFORMATTED_TYPES}
 
 
 class DirectoryManager:
@@ -35,8 +24,8 @@ class DirectoryManager:
         self.types: list[Any] = []
         # Отдельный словарь только для .DAT файлов с преобразованными данными
         self.data_files: dict[str, list[Any]] = {}
+        self.raw_data_files: dict[str, list[str]] = {}
         self.custom_code = None
-
         self.update_files()
 
     def update_files(self) -> None:
@@ -44,7 +33,7 @@ class DirectoryManager:
         # Очищаем словари перед обновлением
         self.config_files.clear()
         self.data_files.clear()
-
+        self.raw_data_files.clear()
         file_loader = ParallelFileLoader(self.max_workers)
 
         # Находим все необходимые файлы
@@ -53,14 +42,15 @@ class DirectoryManager:
             all_files.extend(glob.glob(str(self.directory / pattern)))
         # Параллельная загрузка всех файлов
         self.config_files = file_loader.load_files_parallel(all_files)
-        self.prepare_types()
+        self.types = list(map(lambda x: TYPES_MAPPING[x], self.config_files["TYPES"]))
+        # self.prepare_types()
         for pattern in ["HEADER", "FORMAT"]:
             if pattern not in self.config_files:
                 self.config_files[pattern] = list(
                     str(" ") * len(self.config_files["TYPES"])
                 )
 
-        self.data_files = file_loader.load_files_parallel(
+        self.raw_data_files = file_loader.load_files_parallel(
             glob.glob(str(self.directory / "*.DAT"))
         )
         # Загрузка пользовательского кода
@@ -68,6 +58,7 @@ class DirectoryManager:
 
         # Преобразование .DAT файлов и заполнение data_files
         self._process_dat_files_parallel()
+        print(self.data_files)
 
     def _load_custom_code(self) -> None:
         """Загрузка пользовательского кода"""
@@ -84,23 +75,18 @@ class DirectoryManager:
     def _process_dat_files_parallel(self) -> None:
         """Параллельная обработка .DAT файлов и заполнение data_files"""
         # Получаем сырые .DAT данные из основного словаря
-        raw_dat_files = {**self.data_files}
-
-        if not raw_dat_files:
+        if not self.raw_data_files:
             print("Не найдено .DAT файлов для обработки")
             return
         self.data_files.clear()
-        print(f"Обработка {len(raw_dat_files)} .DAT файлов...")
+        print(f"Обработка {len(self.raw_data_files)} .DAT файлов...")
 
         # Параллельное преобразование .DAT файлов
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {}
-            for filename, raw_data in raw_dat_files.items():
+            for filename, raw_data in self.raw_data_files.items():
                 future = executor.submit(
-                    self._convert_dat_file_data,
-                    raw_data,
-                    self.types,
-                    self.config_files["FORMAT"],
+                    self._convert_dat_file_data, raw_data, self.types
                 )
                 futures[future] = filename
 
@@ -114,47 +100,19 @@ class DirectoryManager:
                 except Exception as e:
                     print(f"Ошибка преобразования {filename}: {e}")
                     # В случае ошибки оставляем сырые данные
-                    self.data_files[filename] = raw_dat_files[filename]
+                    self.data_files[filename] = self.raw_data_files[filename]
 
     def _convert_dat_file_data(
-        self, data: List[str], types_config: List[Any], fmt_config: List[str]
+        self, data: List[str], types_config: List[Any]
     ) -> List[Any]:
         """Преобразование данных .DAT файла"""
-        converted = []
-        for i in range(len(data)):
-            converted.append(
-                self.parse_value(
-                    data[i],
-                    types_config[i],
-                    fmt_config[i],
-                )
+        return list(
+            map(
+                lambda x, y: UNITS_MAP[y]["fromStrConverter"](x),
+                data,
+                types_config,
             )
-        return converted
-
-    def prepare_types(self) -> None:
-        for i in self.config_files["TYPES"]:
-            self.types.append(TYPE_MAPPING[i])
-
-    def parse_value(self, value: str, target_type: Any, fmt: str = " ") -> Any:
-        self._cache: dict[str, Any] = {}
-        self._cache_size = 100000
-        if not value.strip():
-            return None
-
-        cache_key = f"{value}|{target_type}"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        try:
-            result = target_type(value)
-            if len(self._cache) >= self._cache_size:
-                self._cache.clear()
-            self._cache[cache_key] = result
-
-            return result
-
-        except Exception as e:
-            print(e)
-            return value
+        )
 
 
 class ParallelFileLoader:
