@@ -2,6 +2,7 @@ import glob
 import csv
 import importlib.util
 import multiprocessing
+import pickle
 from . import PickablePixmap
 from ..Units import TYPES_MAPPING, UNITS_MAP
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
@@ -59,6 +60,14 @@ class DirectoryManager:
         # Преобразование .DAT файлов и заполнение data_files
         self._process_dat_files_parallel()
         print(self.data_files)
+
+    def load_file(self, path: str) -> tuple[str, Any]:
+        with open(path, "rb") as file:
+            return Path(path).name, pickle.load(file)
+
+    def save_file(self, path: str, data: List[Any]) -> None:
+        with open(path, "wb") as file:
+            pickle.dump(data, file)
 
     def _load_custom_code(self) -> None:
         """Загрузка пользовательского кода"""

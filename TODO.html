@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>TODO.html</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+
+</head>
+
+<body>
+
+<h1>Что нужно сделать</h1>
+<h2>1. Редакторы файлов заголовка и типов.</h2>
+<h2>2. Функцию для определения корня проекта в каждый модуль (функция представлена ниже)</h2>
+<pre><code class="language-python">inProjectRoot: bool = False
+projectRoot: str = str(Path(__file__).resolve())
+upToFolders: int = 0
+while not inProjectRoot:
+    projectRoot = str(Path(__file__).resolve().parents[upToFolders])
+    if projectRoot.endswith(&quot;OpenCRM&quot;):
+        inProjectRoot = True
+    upToFolders += 1
+sys.path.append(projectRoot)
+</code></pre>
+<h2>3. Оптимизировать папку modules для более удобного импорта модулей (на данный момент переработаны только Units)</h2>
+<h2>4. Перейти на использование бинарных файлов и изучить возможность использования мультипроцессинга для ускорения их загрузки.</h2>
+<h2>5. Добавить примеры использования программы (по сути готовые для использования конфиги)</h2>
+<h2>6. Добавить сетевой функционал:</h2>
+<h3>- Серверные скрипты для управления правами доступа к данным, удаления &quot;мусорных&quot; данных по параметрам и т.д.</h3>
+<h3>- Возможность подключения у удаленному серверу данных по протоколу SSH через доменное имя, по прямому IP или через VPN LogmeinHamachi</h3>
+<h3>- Возможность использования в качестве хранилища данных облачные сервисы (GoogleDrive, Яндекс.Диск и т.д)</h3>
+<h2>7. Приготовить программу к &quot;пакетированию&quot; и портированию на другие платформы (особое внимание на поделки от Microsoft)</h2>
+
+</body>
+</html>

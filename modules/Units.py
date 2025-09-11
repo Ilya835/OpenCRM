@@ -1,10 +1,23 @@
 from PyQt6 import QtWidgets, QtCore
 from typing import Any, Callable, Dict, Optional, TypedDict, NotRequired
-from .misc import MenuUtils
+from .misc import MenuUtils  # type: ignore
 import re
 
 
 class Unit(TypedDict):
+    """
+    Типизированный словарь данных о юните.
+    signalName: Имя сигнала к которому можно подключать методы
+    dataType: Нативный тип данных юнита
+    getData: Возвращает нативное значение из юнита
+    setData: Устанавливает значение переданное в нативном типе
+    clearData: Очищает или сбрасывает к стандартному значению данные в юните
+    fromStrConverter: Извлекает данные из строки в нативный тип
+    contextMenuActions: Список Actions в контекстном меню (Опциональный)
+    defaultValue: Стандартное значение в юните (Опциональный)
+    isCheckable: Является ли юнит отмечаемым (Опциональный)
+    """
+
     signalName: str
     dataType: Any
     getData: Callable[[Any], Any]
@@ -16,16 +29,20 @@ class Unit(TypedDict):
     isCheckable: NotRequired[bool]
 
 
-TYPES_MAPPING = {
+# Словарь для преобразования в булевы значения
+BOOL_MAP = dict.fromkeys({"Да", "Есть", "True", "1", "Yes", "Y"}, True)
+BOOL_MAP.update(dict.fromkeys({"Нет", "False", "0", "No", "N"}, False))
+
+# Вербальные названия юнитов
+UNITS_NAMING = {
     "Строка": QtWidgets.QLineEdit,
     "Целое число": QtWidgets.QSpinBox,
     "Дробное число": QtWidgets.QDoubleSpinBox,
     "Дата и время": QtWidgets.QDateTimeEdit,
     "Флажок": QtWidgets.QCheckBox,
 }
-BOOL_MAP = dict.fromkeys({"Да", "Есть", "True", "1", "Yes", "Y"}, True)
-BOOL_MAP.update(dict.fromkeys({"Нет", "False", "0", "No", "N"}, False))
 
+# Юниты
 UNITS_MAP: Dict[Any, Unit] = {
     QtWidgets.QLineEdit: {
         "signalName": "textChanged",
@@ -73,14 +90,17 @@ UNITS_MAP: Dict[Any, Unit] = {
 
 
 class CustomGroupBox(QtWidgets.QGroupBox):
+    """
+    Сборщик юнита.
+    widget - Строка с вербальным названием виджета из списка UNITS_NAMING.
+    parent - Родительский виджет (Опционально)
+    """
+
     def __init__(self, widget: str, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
-        self.unit = UNITS_MAP.get(TYPES_MAPPING[widget], UNITS_MAP[QtWidgets.QLineEdit])
-        self._input_widget = TYPES_MAPPING[widget](self) or TYPES_MAPPING["Строка"](
-            self
-        )
+        self.unit = UNITS_MAP.get(UNITS_NAMING[widget], UNITS_MAP[QtWidgets.QLineEdit])
+        self._input_widget = UNITS_NAMING[widget](self) or UNITS_NAMING["Строка"](self)
         self.setLayout(QtWidgets.QVBoxLayout(self))
-        self.layout().setContentsMargins(6, 12, 6, 6)
         self.layout().addWidget(self._input_widget)
         self.signal_name = self.unit["signalName"]
         self.data_type = self.unit["dataType"]
@@ -106,19 +126,17 @@ class CustomGroupBox(QtWidgets.QGroupBox):
         self.context_menu.exec(self._input_widget.mapToGlobal(pos))
 
 
-# Пример использования
 if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-
     window = QtWidgets.QWidget()
     layout = QtWidgets.QVBoxLayout(window)
-    for widget in TYPES_MAPPING:
+    for widget in UNITS_NAMING:
         group_box = CustomGroupBox(widget)
         group_box.setTitle(f"Test {widget}")
 
-        def on_change(value):
+        def on_change(value: Any) -> None:
             print(f"{widget} changed: {value}")
 
         group_box.connectMethod(on_change)

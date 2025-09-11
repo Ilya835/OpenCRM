@@ -5,6 +5,7 @@ from modules.misc.DirectoryManager import DirectoryManager
 from modules import ui_files
 from modules.areas.DirectoryExplorer import DirectoryExplorer
 from modules.areas.FileEditor import FileEditor
+from modules.areas.HeaderEditor import HeaderEditor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -22,18 +23,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.DirManager = DirectoryManager(
             "/home/ilya/Projects/OpenCRM/test/dir1/"
         )  # Экземпляр класса DirectoryManager для работы с фалами в папке (чтение, запись и т.д).
-        self.enters = FileEditor(
-            self.DirManager
+        self.enters = (
+            HeaderEditor()
         )  # Экземпляр класса FileEditor содержащий в себе поля ввода.
         self.explorer = DirectoryExplorer(
             self.DirManager
         )  # Экземпляр класса DirectoryExplorer - таблицы с файлами и их контентом являющейся селектором файлов.
-        self.enters.selector = self.explorer
-        self.explorer.enters = self.enters
+        # self.enters.selector = self.explorer
+        # self.explorer.enters = self.enters
         self.ui.splitter.addWidget(self.enters)
         self.ui.splitter_2.addWidget(self.explorer)
         self.explorer.update()
-        self.enters.update()
+        # self.enters.update()
 
 
 app = QtWidgets.QApplication([])
