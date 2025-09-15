@@ -1,6 +1,7 @@
 from PyQt6 import QtWidgets, QtCore
 import sys
 from pathlib import Path
+from typing import Any, Dict, Union, List, Optional
 
 inProjectRoot: bool = False
 projectRoot: str = str(Path(__file__).resolve())
@@ -14,15 +15,13 @@ sys.path.append(projectRoot)
 
 from modules.Units import UNITS_NAMING
 from modules.icons import Icons
-from typing import Any, Dict, Union, List, Optional
+from modules.misc.DirectoryManager import DirectoryManager
 
 module_name = "Редактор файла типов"
 
 
 class TypesEditor(QtWidgets.QGroupBox):
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self, DirManager: DirectoryManager) -> None:
         super().__init__()
 
         layout = QtWidgets.QGridLayout(self)
@@ -30,7 +29,6 @@ class TypesEditor(QtWidgets.QGroupBox):
         def addField() -> None:
             field = QtWidgets.QComboBox(self)
             for unit in UNITS_NAMING:
-                print(unit)
                 field.addItem(unit, UNITS_NAMING[unit])
             layout.addWidget(field, layout.rowCount(), 0)
             deleteButton = QtWidgets.QPushButton("Удалить тип", self)

@@ -3,14 +3,81 @@ import csv
 import importlib.util
 import multiprocessing
 import pickle
-from . import PickablePixmap
-from ..Units import TYPES_MAPPING, UNITS_MAP
+import sys
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Any
-from PyQt6 import QtCore
+from PyQt6 import QtWidgets, QtGui, QtCore
+from typing import Any, Dict, List, Union, Callable
 
-module_name = "Менеджер папки"
+inProjectRoot: bool = False
+projectRoot: str = str(Path(__file__).resolve())
+upToFolders: int = 0
+while not inProjectRoot:
+    projectRoot = str(Path(__file__).resolve().parents[upToFolders])
+    if projectRoot.endswith("OpenCRM"):
+        inProjectRoot = True
+    upToFolders += 1
+sys.path.append(projectRoot)
+from modules.Units import UNITS_NAMING, UNITS_MAP
+
+module_name = "Дополнительные утилиты для QMenuBar"
+
+
+class MenuUtils:
+    """
+    Набор утилит для работы с QMenuBar и QMenu.
+    """
+
+    class MenuItem(QtGui.QAction):
+        def __init__(
+            self,
+            title: str,
+            method: Callable[[Any], Any],
+            checkable: bool = False,
+            icon: Union[QtGui.QIcon, None] = None,
+            objName: Union[str, None] = None,
+        ):
+            """
+            Создает объект типа QAction из переданных при инициализации переменных.
+            """
+            super().__init__()
+            self.setText(title)
+            self.triggered.connect(method)
+            self.setCheckable(checkable)
+            if icon is not None:
+                self.setIcon(icon)
+            if objName is not None:
+                self.setObjectName(objName)
+
+    def setupMenuBar(
+        self,
+        menubar: QtWidgets.QMenuBar,
+        content: Dict[str, List[Union[MenuItem, None]]],
+        parent: QtWidgets.QGroupBox,
+    ) -> None:
+        """
+        Создает ManuBar у переданного parent.
+        """
+        for i in list(content.keys()):
+            menu = QtWidgets.QMenu(i, menubar)
+            for j in content[i]:
+                if j is None:
+                    menu.addSeparator()
+                else:
+                    j.setParent(menu)
+                    menu.addAction(j)
+            menubar.addMenu(menu)
+            menu.show()
+        parent.layout().setMenuBar(menubar)
+
+    def prepareContextMenu(
+        self, context_menu: QtWidgets.QMenu, content: List[Union[MenuItem, None]]
+    ) -> None:
+        for action in content:
+            if action is not None:
+                context_menu.addAction(action)
+            else:
+                context_menu.addSeparator()
 
 
 class DirectoryManager:
@@ -43,7 +110,7 @@ class DirectoryManager:
             all_files.extend(glob.glob(str(self.directory / pattern)))
         # Параллельная загрузка всех файлов
         self.config_files = file_loader.load_files_parallel(all_files)
-        self.types = list(map(lambda x: TYPES_MAPPING[x], self.config_files["TYPES"]))
+        self.types = list(map(lambda x: UNITS_NAMING[x], self.config_files["TYPES"]))
         # self.prepare_types()
         for pattern in ["HEADER", "FORMAT"]:
             if pattern not in self.config_files:
@@ -125,6 +192,10 @@ class DirectoryManager:
 
 
 class ParallelFileLoader:
+    """
+    Загрузчик файлов использующий мультипроцессинг.
+    """
+
     def __init__(self, max_workers: int = multiprocessing.cpu_count()):
         self.max_workers = max_workers
 
@@ -149,3 +220,22 @@ class ParallelFileLoader:
                     results[filename] = content
 
         return results
+
+
+class PickablePixmap(QtGui.QPixmap):
+    """
+    Класс для полноценной работы с QPixmap (избегает ошибки QPixmap object is not pickable)
+    """
+
+    def __reduce__(self) -> Any:
+        return type(self), (), self.__getstate__()
+
+    def __getstate__(self) -> QtCore.QByteArray:
+        ba = QtCore.QByteArray()
+        stream = QtCore.QDataStream(ba, QtCore.QIODevice.OpenModeFlag.WriteOnly)
+        stream << self
+        return ba
+
+    def __setstate__(self, ba: QtCore.QByteArray) -> None:
+        stream = QtCore.QDataStream(ba, QtCore.QIODevice.OpenModeFlag.ReadOnly)
+        stream >> self

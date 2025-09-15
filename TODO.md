@@ -1,7 +1,7 @@
 # Что нужно сделать
 ## 1. Редакторы файлов заголовка и типов.
 ## 2. Функцию для определения корня проекта в каждый модуль (функция представлена ниже)
-~~~python
+~~~Python
 inProjectRoot: bool = False
 projectRoot: str = str(Path(__file__).resolve())
 upToFolders: int = 0
