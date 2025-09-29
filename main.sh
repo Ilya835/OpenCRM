@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
-import logging
 from PyQt6 import QtWidgets
-from modules.misc.DirectoryManager import DirectoryManager
+from modules.Misc.DirectoryManager import DirectoryManager
 from modules import ui_files
-from modules.areas.DirectoryExplorer import DirectoryExplorer
-from modules.areas.FileEditor import FileEditor
-from modules.areas.HeaderEditor import HeaderEditor
+from modules.ModularUI.Areas import DirectoryExplorer, FileEditor, HeaderEditor
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(f"./logs/{__name__}.log", mode="w")
-formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 
 class MainWindow(QtWidgets.QMainWindow):
