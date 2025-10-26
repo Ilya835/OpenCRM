@@ -30,7 +30,7 @@ class MenuUtils:
         self,
         menubar: QtWidgets.QMenuBar,
         content: Dict[str, List[Union[MenuItem, None]]],
-        parent: QtWidgets.QGroupBox,
+        parent: Union[QtWidgets.QGroupBox, None] = None,
     ) -> None:
         """
         Создает ManuBar у переданного parent.
@@ -45,7 +45,8 @@ class MenuUtils:
                     menu.addAction(j)
             menubar.addMenu(menu)
             menu.show()
-        parent.layout().setMenuBar(menubar)
+        if parent is not None:
+            parent.layout().setMenuBar(menubar)  # type: ignore[union-attr]
 
     def setupContextMenu(
         self, context_menu: QtWidgets.QMenu, content: List[Union[MenuItem, None]]

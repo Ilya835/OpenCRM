@@ -3,7 +3,7 @@ import sys
 import glob
 import pickle
 import multiprocessing
-from typing import Any, Union
+from typing import Any, TypedDict
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -22,45 +22,71 @@ from modules.ModularUI.Units import UNITS_NAMING, UNITS_MAP
 class DirectoryManager:
     """Высокопроизводительный менеджер директории"""
 
+    class ColumnConfig(TypedDict):
+        unit: str
+        formating: str
+        header: str
+        hidden: bool
+
+    default_config: list[ColumnConfig] = [
+        {
+            "unit": "Строка",
+            "formating": None,
+            "header": "Это автоматически сгенерированный файл заголовка.",
+            "hidden": False,
+        },
+        {
+            "unit": "Целое число",
+            "formating": None,
+            "header": "Это автоматически сгенерированный файл заголовка.",
+            "hidden": False,
+        },
+        {
+            "unit": "Дробное число",
+            "formating": None,
+            "header": "Это автоматически сгенерированный файл заголовка.",
+            "hidden": False,
+        },
+        {
+            "unit": "Дата и время",
+            "formating": None,
+            "header": "Это автоматически сгенерированный файл заголовка.",
+            "hidden": False,
+        },
+    ]
+
     def __init__(self, directory: str, max_workers: int = multiprocessing.cpu_count()):
         self.directory = Path(directory)
         self.max_workers = max_workers  # Максимальное количество потоков
         self.directory_data: dict[Any] = {}  # Хранилище файлов
-        self.allowed_filenames: dict[str, Any] = {
-            "TYPES": [UNITS_NAMING["Строка"]],
-            "HEADER": ["Это автоматически сгенерированный файл заголовка."],
-            "FORMAT": [None]
-        } # Разрешеные имена файлов
+
+        def readFile():
+            try:
+                with open(self.directory.joinpath("SETTINGS.BIN"), "rb") as file:
+                    return pickle.load(file)
+            except Exception as error:
+                print(
+                    f"Ошибка при чтении файла SETTINGS.BIN: {error} \nПересоздаю файл."
+                )
+                with open(self.directory.joinpath("SETTINGS.BIN"), "wb") as file:
+                    pickle.dump(self.default_config, file)
+                with open(self.directory.joinpath("SETTINGS.BIN"), "rb") as file:
+                    return pickle.load(file)
+
+        self.config_file = readFile()
         self.data_suffix = "*.DAT"
         self.file_loader = self.ParallelFileLoader(self.max_workers)  # Загрузчик файлов
-        self.paths_list = self.getFilepaths(self.directory)  # Список путей до файлов
         self.update_files()
-
-    def getFilepaths(self, directory) -> list[str]:
-        """Получение путей до файлов в папке."""
-        filepaths = []
-        for pattern in list(self.allowed_filenames.keys()):
-            filepaths.extend(glob.glob(str(self.directory / pattern)))
-        filepaths.extend(glob.glob(str(self.directory/self.data_suffix)))
-        return filepaths
-
-    def checkConfigFiles(self):
-        """Проверка на наличие нужных файлов и их создание в случае отсутствие."""
-        for filename, default_data in self.allowed_filenames:
-            if filename not in os.listdir(self.directory):
-                self.file_loader.save_file(str(self.directory / filename), default_data)
 
     def update_files(self) -> None:
         """Обновление словарей файлов."""
         self.directory_data.clear()  # Очищаем словари перед обновлением
-        self.paths_list = self.getFilepaths(
-            self.directory
+        self.paths_list = glob.glob(
+            str(self.directory / self.data_suffix)
         )  # Обновление путей до файлов в папке
-        self.checkConfigFiles()  # Проверяем папку на наличие нужных файлов и создаем их в случае отсутствия
         self.directory_data.update(
             self.file_loader.load_files_parallel(self.paths_list)
         )  # Параллельная загрузка всех файлов
-
 
     class ParallelFileLoader:
         """Загрузчик файлов использующий мультипроцессинг."""

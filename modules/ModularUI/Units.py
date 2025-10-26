@@ -88,9 +88,9 @@ UNITS_MAP: Dict[Any, Unit] = {
         "fromStrConverter": lambda data: BOOL_MAP[data],
     },
     QtWidgets.QDateTimeEdit: {
-        "signalName": "datetimeChanged",
+        "signalName": "dateTimeChanged",
         "dataType": QtCore.QDateTime,
-        "getData": lambda widget: widget.isChecked(),
+        "getData": lambda widget: widget.dateTime(),
         "setData": lambda widget, data: widget.setDateTime(data),
         "clearData": lambda widget: widget.setDateTime(
             QtCore.QDateTime.currentDateTime()
@@ -99,6 +99,19 @@ UNITS_MAP: Dict[Any, Unit] = {
     },
 }
 
+class CustomCellWidget():
+    """
+    Сборщик юнита.
+    widget - Строка с вербальным названием виджета из списка UNITS_NAMING.
+    parent - Родительский виджет (Опционально)
+    """
+
+    def __init__(self, widget: str):
+        self.unit = UNITS_MAP.get(UNITS_NAMING[widget], UNITS_MAP[QtWidgets.QLineEdit])
+        self._input_widget = UNITS_NAMING[widget]() or UNITS_NAMING["Строка"]()
+        self._input_widget.setEnabled(False)
+        self.data_type = self.unit["dataType"]
+        self.setData = lambda data: self.unit["setData"](self._input_widget, data)
 
 class CustomGroupBox(QtWidgets.QGroupBox):
     """
