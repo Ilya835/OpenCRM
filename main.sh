@@ -11,7 +11,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__()
         self.ui = ui_files.TestWindow.Ui_Window()
         self.ui.setupUi(self)
-        self.DirManager = DirectoryManager(
+        self.DirManager = DirectoryManager.DirectoryManager(
             "/home/ilya/Projects/OpenCRM/test/dir1/"
         )  # Экземпляр класса DirectoryManager для работы с фалами в папке (чтение, запись и т.д).
         self.enters = (

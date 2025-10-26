@@ -1,8 +1,9 @@
 import sys
 import re
-from PyQt6 import QtWidgets, QtCore
+from PyQt6 import QtWidgets, QtCore, QtGui
 from typing import Any, Callable, Dict, Optional, TypedDict, NotRequired
 from pathlib import Path
+
 inProjectRoot: bool = False
 projectRoot: str = str(Path(__file__).resolve())
 upToFolders: int = 0
@@ -13,6 +14,7 @@ while not inProjectRoot:
     upToFolders += 1
 sys.path.append(projectRoot)
 import modules.Misc as Misc
+from modules.Misc import DirectoryManager
 
 
 class Unit(TypedDict):
@@ -51,6 +53,8 @@ UNITS_NAMING = {
     "Дробное число": QtWidgets.QDoubleSpinBox,
     "Дата и время": QtWidgets.QDateTimeEdit,
     "Флажок": QtWidgets.QCheckBox,
+    "Картинка": QtWidgets.QLabel,
+    "Ссылка на внешний файл данных": QtWidgets.QComboBox,
 }
 
 # Юниты
@@ -97,21 +101,40 @@ UNITS_MAP: Dict[Any, Unit] = {
         ),
         "fromStrConverter": lambda data: QtCore.QDateTime.fromString(data),
     },
+    QtWidgets.QLabel: {
+        "signalName": "",
+        "dataType": Misc.PickablePixmap,
+        "getData": lambda widget: Misc.PickablePixmap(widget.pixmap()),
+        "setData": lambda widget, data: widget.setPixmap(Misc.PickablePixmap(data)),
+        "clearData": lambda widget: widget.setPixmap(Misc.PickablePixmap(None)),
+        "fromStrConverter": lambda data: Misc.PickablePixmap(data),
+    },
+    QtWidgets.QComboBox: {
+        "signalName": "",
+        "dataType": str,
+        "getData": lambda widget: widget.getCurrentText(),
+        "setData": lambda widget, data: widget.setCurrentText(data),
+        "clearData": lambda widget: widget.setCurrentIndex(0),
+        "fromStrConverter": lambda data: str(data),
+    },
 }
 
-class CustomCellWidget():
+
+class CustomCellWidget:
     """
-    Сборщик юнита.
+    Сборщик виджета для QTableWidget.
     widget - Строка с вербальным названием виджета из списка UNITS_NAMING.
-    parent - Родительский виджет (Опционально)
     """
 
     def __init__(self, widget: str):
         self.unit = UNITS_MAP.get(UNITS_NAMING[widget], UNITS_MAP[QtWidgets.QLineEdit])
-        self._input_widget = UNITS_NAMING[widget]() or UNITS_NAMING["Строка"]()
+        self._input_widget = UNITS_NAMING[widget]()  # or UNITS_NAMING["Строка"]()
         self._input_widget.setEnabled(False)
         self.data_type = self.unit["dataType"]
         self.setData = lambda data: self.unit["setData"](self._input_widget, data)
+        if widget == "Картинка":
+            self._input_widget.setFixedSize(300,300)
+
 
 class CustomGroupBox(QtWidgets.QGroupBox):
     """
@@ -133,9 +156,7 @@ class CustomGroupBox(QtWidgets.QGroupBox):
         self.clearData = self.unit["clearData"]
         if "contextMenuActions" in self.unit:
             self.context_menu = QtWidgets.QMenu(self)
-            prepareContextMenu(
-                self.context_menu, self.unit["contextMenuActions"]
-            )
+            prepareContextMenu(self.context_menu, self.unit["contextMenuActions"])
             self._input_widget.setContextMenuPolicy(
                 QtCore.Qt.ContextMenuPolicy.CustomContextMenu
             )
@@ -148,6 +169,74 @@ class CustomGroupBox(QtWidgets.QGroupBox):
 
     def addContextMenu(self, pos: QtCore.QPoint) -> None:
         self.context_menu.exec(self._input_widget.mapToGlobal(pos))
+
+
+class PixmapGroupBox(QtWidgets.QGroupBox):
+    def __init__(self, parent: Optional[QtWidgets.QWidget]):
+        super().__init__(parent)
+        self.unit = QtWidgets.QLabel(self)
+        self.changeButton = QtWidgets.QPushButton("Выбрать картинку",self)
+        self.changeButton.clicked.connect(self.changePixmap)
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+        self.layout().addWidget(self.unit)
+        self.layout().addWidget(self.changeButton)
+        self.setData = lambda data: self.unit.setPixmap(Misc.PickablePixmap(data))
+        self.getData = lambda: Misc.PickablePixmap(self.unit.pixmap())
+        self.clearData = lambda: self.unit.setPixmap(Misc.PickablePixmap(None))
+        self.connectedMethod = None
+    def changePixmap(self) -> None:
+        filename, ok = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Выберете картинку", str(Path.home()), "Images (*.png *.jpg)"
+        )
+        path = Path(filename)
+        self.setData(str(path)) if filename else self.clearData()
+        try:
+            self.connectedMethod() if self.connectedMethod is not None else None
+        except:
+            pass
+
+    def connectMethod(self, method: Callable[[Any], None]) -> None:
+        self.connectedMethod = method
+
+
+class DataComboBox(QtWidgets.QGroupBox):
+    def __init__(self, path: str, parent: Optional[QtWidgets.QWidget]):
+        super().__init__(parent)
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+        self.unit = QtWidgets.QComboBox(self)
+        self.data_view = QtWidgets.QTableWidget(self)
+        self.layout().addWidget(self.data_view)
+        self.layout().addWidget(self.unit)
+        self.setData = lambda data: self.unit.setCurrentText(Path(data).name)
+        self.getData = lambda: self.unit.currentText()
+        self.DirManager = DirectoryManager.DirectoryManager(path)
+        self.view_widgets = []
+        for i in range(len(self.DirManager.directory_data)):
+            self.unit.addItem(
+                str(Path(self.DirManager.paths_list[i]).name),
+                userData=self.DirManager.paths_list[i],
+            )
+        self.data_view.setRowCount(len(self.DirManager.config_file))
+        self.data_view.setColumnCount(1)
+        for i in range(len(self.DirManager.config_file)):
+            self.data_view.setVerticalHeaderItem(
+                i,
+                QtWidgets.QTableWidgetItem(self.DirManager.config_file[i]["header"]),
+            )
+            cellWidget = CustomCellWidget(self.DirManager.config_file[i]["unit"])
+            self.view_widgets.append(cellWidget)
+            self.data_view.setCellWidget(i, 0, cellWidget._input_widget)
+            self.data_view.resizeColumnsToContents()
+            self.data_view.resizeRowsToContents()
+        self.connectMethod(self.updateDataView)
+    def updateDataView(self):
+        for i in range(len(self.view_widgets)):
+            self.view_widgets[i].setData(
+                self.DirManager.directory_data[self.unit.currentText()][i]
+            )
+
+    def connectMethod(self, method):
+        self.unit.activated.connect(method)
 
 
 if __name__ == "__main__":

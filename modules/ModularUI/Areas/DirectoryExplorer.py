@@ -53,6 +53,8 @@ class DirectoryExplorer(QtWidgets.QGroupBox):
                 widget = CustomCellWidget(self.DirManager.config_file[j]["unit"])
                 widget.setData(list(self.DirManager.directory_data.values())[i][j])
                 self.table.setCellWidget(i, j, widget._input_widget)
+                self.table.resizeColumnsToContents()
+                self.table.resizeRowsToContents()
 
 
 MainClass = DirectoryExplorer

@@ -1,5 +1,5 @@
 import sys
-from PyQt6 import QtWidgets, QtGui
+from PyQt6 import QtWidgets, QtGui, QtCore
 from typing import Any, Dict, Union, List
 from pathlib import Path
 
@@ -18,7 +18,7 @@ from modules.ModularUI.Areas import DirectoryExplorer
 from modules.ModularUI import Units
 
 
-class FileEditor(QtWidgets.QGroupBox):
+class FileEditor(QtWidgets.QScrollArea):
     def __init__(
         self,
         DirManager: DirectoryManager,
@@ -56,12 +56,31 @@ class FileEditor(QtWidgets.QGroupBox):
         self.selector: Union[DirectoryExplorer.DirectoryExplorer, None]
         self.editor_enters: list[Any] = []  # Массив полей ввода данных
         self.menubar = QtWidgets.QMenuBar()
-        self.setLayout(QtWidgets.QGridLayout(self))
-        MenuUtils.setupMenuBar(MenuUtils,self.menubar, menubar_content, self)
-        self.update()
+        self.scrollAreaWidgetContents = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents.setLayout(QtWidgets.QVBoxLayout())
+        self.setWidget(self.scrollAreaWidgetContents)
+        self.scrollAreaWidgetContents.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        MenuUtils.setupMenuBar(MenuUtils, self.menubar, menubar_content, self.scrollAreaWidgetContents)
+        self.update_data()
 
     def openFile(self) -> None:
-        print("openFile")
+        filename, ok = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Выберете файл", str(Path.home()), "Data files (*.DAT)"
+        )
+        if filename:
+            path = Path(filename)
+            try:
+                self.DirManager.directory = path.parent
+                self.DirManager.update_files()
+            except:
+                pass
+            print(self.DirManager.config_file)
+            self.setTitle(str(self.DirManager.directory))
+            self.update_data()
+            self.selector.update_data()
 
     def deleteFile(self) -> None:
         print("deleteFile")
@@ -76,14 +95,20 @@ class FileEditor(QtWidgets.QGroupBox):
     def showSaveFileDialog(self) -> None:
         def getPath():
             filename, ok = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            "Выберете файл",
-            str(self.DirManager.directory),
-            "Data file (*.DAT)",)
+                self,
+                "Выберете файл",
+                str(self.DirManager.directory),
+                "Data file (*.DAT)",
+            )
             if filename:
-                return str(Path(filename)) if filename.endswith(".DAT") else str(Path(filename+".DAT"))
+                return (
+                    str(Path(filename))
+                    if filename.endswith(".DAT")
+                    else str(Path(filename + ".DAT"))
+                )
             else:
                 return str(None)
+
         editor_content = []
         for i in self.editor_enters:
             editor_content.append(i.getData())
@@ -99,41 +124,27 @@ class FileEditor(QtWidgets.QGroupBox):
             self.DirManager.update(editor_content, 0.5)
             self.selector.update()
 
-    def update(self) -> None:
-        if (
-            self.layout().isEmpty()
-        ):  # Если в редакторе нет виджетов то добавляем их из файла TYPES
+    def update_data(self) -> None:
+        for i in self.editor_enters:
+            i.deleteLater()
+        if True:  # Если в редакторе нет виджетов то добавляем их из файла TYPES
             self.editor_enters.clear()
-            print(self.DirManager.config_file)
             for i in self.DirManager.config_file:
-                print(i)
-                widget = Units.CustomGroupBox(i["unit"])  # Создаем объект виджета (его берем из библиотеки inputs)
+                if i["unit"] == "Картинка":
+                    widget = Units.PixmapGroupBox(self)
+                elif i["unit"] == "Ссылка на внешний файл данных":
+                    widget = Units.DataComboBox(i["dataSource"], self)
+                else:
+                    widget = Units.CustomGroupBox(
+                        i["unit"]
+                    )  # Создаем объект виджета (его берем из библиотеки inputs)
+
                 widget.connectMethod(self.checkFilter)
                 widget.setTitle(i["header"])
                 self.editor_enters.append(
                     widget
                 )  # Добавляем его в массив полей ввода (для дальнейшей обработки)
-                self.layout().addWidget(widget)  # Размещаем его в редакторе
-    
+                self.scrollAreaWidgetContents.layout().addWidget(widget)  # Размещаем его в редакторе
 
-class SaveFileDialog(QtWidgets.QDialog):
-    def __init__(self, parent: FileEditor) -> None:
-        super(SaveFileDialog, self).__init__()
-        self.setWindowTitle("Сохранить файл в:")
-        layout = QtWidgets.QGridLayout()
-        self.pathField = QtWidgets.QLineEdit()
-        self.pathField.setText(str(parent.DirManager.directory))
-        layout.addWidget(QtWidgets.QLabel("Путь:"), 1, 0)
-        layout.addWidget(self.pathField, 1, 1)
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-        self.setLayout(layout)
 
-    def getFullPath(self) -> str:
-        return self.pathField.text()
 MainClass = FileEditor

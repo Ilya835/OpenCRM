@@ -3,7 +3,7 @@ import sys
 import glob
 import pickle
 import multiprocessing
-from typing import Any, TypedDict
+from typing import Any, TypedDict, NotRequired
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -27,6 +27,7 @@ class DirectoryManager:
         formating: str
         header: str
         hidden: bool
+        dataSource: NotRequired[Any]
 
     default_config: list[ColumnConfig] = [
         {
@@ -53,13 +54,31 @@ class DirectoryManager:
             "header": "Это автоматически сгенерированный файл заголовка.",
             "hidden": False,
         },
+        {
+            "unit": "Картинка",
+            "formating": None,
+            "header": "Картинка",
+            "hidden": False,
+        },
+        {
+            "unit": "Ссылка на внешний файл данных",
+            "formating": None,
+            "header": "Файл",
+            "hidden": False,
+            "dataSource": str(Path(projectRoot).joinpath(Path("test/dir1 (Copy 1)")))
+        }
     ]
 
     def __init__(self, directory: str, max_workers: int = multiprocessing.cpu_count()):
         self.directory = Path(directory)
         self.max_workers = max_workers  # Максимальное количество потоков
         self.directory_data: dict[Any] = {}  # Хранилище файлов
+        self.config_file = None
+        self.data_suffix = "*.DAT"
+        self.file_loader = self.ParallelFileLoader(self.max_workers)  # Загрузчик файлов
+        self.update_files()
 
+    def update_files(self) -> None:
         def readFile():
             try:
                 with open(self.directory.joinpath("SETTINGS.BIN"), "rb") as file:
@@ -72,13 +91,7 @@ class DirectoryManager:
                     pickle.dump(self.default_config, file)
                 with open(self.directory.joinpath("SETTINGS.BIN"), "rb") as file:
                     return pickle.load(file)
-
         self.config_file = readFile()
-        self.data_suffix = "*.DAT"
-        self.file_loader = self.ParallelFileLoader(self.max_workers)  # Загрузчик файлов
-        self.update_files()
-
-    def update_files(self) -> None:
         """Обновление словарей файлов."""
         self.directory_data.clear()  # Очищаем словари перед обновлением
         self.paths_list = glob.glob(
